@@ -1,5 +1,5 @@
 # 🧪 ChemLab Pro Matrix (High-Precision Calculation Matrix for Chemistry and Polymers)
-👉 **[Click here to access and use the calculator directly (Click here to use the App)] [(https://chemcale.streamlit.app/)]**
+👉 **[Click here to access and use the calculator directly (https://chemcale.streamlit.app/)]**
 
 ## 📖 Project Introduction
 This project is specifically developed for chemistry and polymer laboratories, aiming to provide a simple, high-precision, and mobile-enabled central hub for feed and solution calculations. The program features a three-decimal-place (0.001) high-precision mode and operates strictly based on `mol` and `g` logic, completely eliminating unit conversion hell.
