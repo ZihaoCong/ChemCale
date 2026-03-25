@@ -64,7 +64,6 @@ def main():
     st.title("🧪 化学与聚合物高精计算矩阵")
     st.caption("全模块已开启三位小数 (0.001) 高精度模式，支持动态单位换算。")
     
-    # 调整了 Tab 的顺序
     tab1, tab2, tab3 = st.tabs(["🔗 聚合物专精 (Polymer)", "💧 储备液助手 (Stock Solutions)", "⚖️ 常规化学计量 (Stoichiometry)"])
 
     # ==========================================
@@ -133,7 +132,7 @@ def main():
             if total_vol_ml > 0: st.metric("实际单体浓度 $[M]_0$ (mol/L)", f"{(n_monomer / total_vol_ml):.3f}")
 
     # ==========================================
-    # Tab 2: 储备液助手 (移动到了中间)
+    # Tab 2: 储备液助手
     # ==========================================
     with tab2:
         st.header("💧 储备液配制助手")
@@ -179,7 +178,7 @@ def main():
         }, na_rep="-"), width="stretch")
 
     # ==========================================
-    # Tab 3: 常规化学计量 (移动到了最后)
+    # Tab 3: 常规化学计量
     # ==========================================
     with tab3:
         st.header("⚖️ 反应物投料与产物理论产率核算")
@@ -202,7 +201,6 @@ def main():
             gen_input_val = st.number_input(f"基准投料值 ({unit_label})", min_value=0.000, value=500.000, format="%.3f")
         with col_r6: gen_ref_purity = st.number_input("基准物质纯度 (%)", min_value=0.001, max_value=100.0, value=100.000, format="%.3f")
 
-        # 将基准物质转换为绝对摩尔 (mol) 作为底层计算基座
         base_pure_mol = 0.0
         if gen_ref_mw > 0:
             if gen_input_type == "质量":
@@ -213,10 +211,7 @@ def main():
                 actual_mol = gen_input_val if amt_unit == "mol" else gen_input_val / 1000.0
                 base_pure_mol = actual_mol * (gen_ref_purity / 100.0)
 
-        # 1 eq 对应的底层 mol
         system_base_mol = base_pure_mol / gen_ref_eq if gen_ref_eq > 0 else 0.0
-        
-        # 显示当前基准的量
         display_base_amt = base_pure_mol if amt_unit == "mol" else base_pure_mol * 1000.0
         st.info(f"🎯 **底层核算:** 该基准纯物质的量为 **{display_base_amt:.3f} {amt_unit}**。反应体系 1.0 eq = {(system_base_mol if amt_unit == 'mol' else system_base_mol * 1000.0):.3f} {amt_unit}。")
         st.markdown("---")
@@ -240,25 +235,16 @@ def main():
         )
 
         res_gen_df = edited_gen_df.copy()
-        
-        # 1. 算底层理论所需 mol
         res_gen_df["_theo_mol"] = system_base_mol * res_gen_df["当量(eq)"]
-        
-        # 2. 转换为显示单位的物质的量
         amt_col_name = f"所需/生成量 ({amt_unit})"
         res_gen_df[amt_col_name] = res_gen_df["_theo_mol"] if amt_unit == "mol" else res_gen_df["_theo_mol"] * 1000.0
         
-        # 3. 算底层理论纯质量 (g)
         res_gen_df["_theo_mass_g"] = res_gen_df["_theo_mol"] * res_gen_df["分子量 (g/mol)"]
-        
-        # 4. 根据纯度计算实际需称取的质量 (g)
         res_gen_df["_actual_mass_g"] = res_gen_df["_theo_mass_g"] / (res_gen_df["纯度 (%)"] / 100.0)
         
-        # 5. 转换为显示单位的质量
         mass_col_name = f"目标质量/实际投料 ({mass_unit})"
         res_gen_df[mass_col_name] = res_gen_df["_actual_mass_g"] if mass_unit == "g" else res_gen_df["_actual_mass_g"] * 1000.0
 
-        # 清理多余列并拼接基准行
         res_gen_df = res_gen_df.drop(columns=["_theo_mol", "_theo_mass_g", "_actual_mass_g"])
         
         gen_anchor_row = pd.DataFrame([{
@@ -268,7 +254,6 @@ def main():
             mass_col_name: gen_input_val if gen_input_type == "质量" else (display_base_amt * gen_ref_mw / (1000 if amt_unit == 'mmol' and mass_unit == 'g' else 1)) 
         }])
         
-        # 修正基准行的显示质量计算
         if gen_input_type == "质量":
             anchor_disp_mass = gen_input_val
         else:
@@ -285,7 +270,6 @@ def main():
         }), width="stretch")
         
         st.download_button("📥 导出常规反应计量表 (.xlsx)", data=to_excel(final_gen_recipe, "Stoichiometry"), file_name="stoichiometry.xlsx")
-
         st.markdown("---")
         
         # ==========================================
@@ -295,21 +279,39 @@ def main():
         st.caption("针对纯液体反应物，输入上方计算得出的质量和查阅的密度，快速转换为移液体积。")
         
         col_v1, col_v2, col_v3, col_v4 = st.columns(4)
-        with col_v1:
-            v_mass_val = st.number_input("纯液体质量", min_value=0.000, value=100.000, format="%.3f")
-        with col_v2:
-            v_mass_unit = st.selectbox("输入质量单位", ["mg", "g"])
-        with col_v3:
-            v_density = st.number_input("液体密度 (g/mL)", min_value=0.001, value=1.000, format="%.3f")
-        with col_v4:
-            v_vol_unit = st.selectbox("输出体积单位", ["μL", "mL"])
+        with col_v1: v_mass_val = st.number_input("纯液体质量", min_value=0.000, value=100.000, format="%.3f")
+        with col_v2: v_mass_unit = st.selectbox("输入质量单位", ["mg", "g"])
+        with col_v3: v_density = st.number_input("液体密度 (g/mL)", min_value=0.001, value=1.000, format="%.3f")
+        with col_v4: v_vol_unit = st.selectbox("输出体积单位", ["μL", "mL"])
 
-        # 计算逻辑
         v_mass_g = v_mass_val if v_mass_unit == "g" else v_mass_val / 1000.0
         v_vol_ml = v_mass_g / v_density
         v_vol_final = v_vol_ml if v_vol_unit == "mL" else v_vol_ml * 1000.0
-
         st.success(f"🧪 **换算结果:** 需要移取 **{v_vol_final:.3f} {v_vol_unit}**")
+        st.markdown("---")
+
+        # ==========================================
+        # 新增：产率计算器 (Yield Calculator)
+        # ==========================================
+        st.subheader("步骤 4: 产率计算器 (Yield Calculator)")
+        st.caption("已自动提取上方表格中第一个【Product】的理论产量作为默认值。")
+        
+        # 自动去表格里捞第一个 Product 的理论质量
+        default_theo = 100.000
+        prod_rows = final_gen_recipe[final_gen_recipe["角色"] == "Product"]
+        if not prod_rows.empty:
+            default_theo = float(prod_rows.iloc[0][mass_col_name])
+            
+        col_y1, col_y2, col_y3 = st.columns(3)
+        with col_y1: 
+            y_theo = st.number_input(f"理论产量 ({mass_unit})", min_value=0.001, value=default_theo, format="%.3f")
+        with col_y2: 
+            # 默认给个 85% 产率的数作为占位符，方便用户直观看到效果
+            y_actual = st.number_input(f"实际产量 ({mass_unit})", min_value=0.000, value=default_theo * 0.85, format="%.3f") 
+        with col_y3:
+            if y_theo > 0:
+                yield_percent = (y_actual / y_theo) * 100
+                st.metric("📈 实际产率 (Yield)", f"{yield_percent:.2f} %")
 
 if __name__ == "__main__":
     main()
